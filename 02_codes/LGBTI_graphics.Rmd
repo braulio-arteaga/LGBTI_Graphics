@@ -1,0 +1,283 @@
+---
+title: "Primera Encuesta Virtual para Personas LGBTI, 2017 - INEI (Perú)"
+author: "Braulio Arteaga"
+date: "`r Sys.Date()`"
+output: 
+  rmdformats::readthedown:
+    number_sections: no
+    code_folding: show      
+    highlight: kate
+    self_contained: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = T, echo = T, results = "hide", 
+                      error = F, warning = F, message = F)
+```
+
+
+# 1. Packages
+```{r}
+library("pacman")
+p_load(tidyverse, haven, fastDummies, patchwork, gglgbtq, hrbrthemes, ggtext, showtext)
+
+```
+
+
+# 2. Directory
+```{r}
+main           <- "C:/Users/braul/Desktop/02_projects/01_GITHUB/Graphics-Miscellany/01_LGBTI"
+input          <- paste(main, sep="", "/01_input")
+output         <- paste(main, sep="", "/03_output")
+```
+
+
+# 3. Add fonts via showtext
+```{r}
+font_add_google("Cinzel", "Cinzel")
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = 300)
+```
+
+
+# 4. Data manipulation 
+```{r}
+data <- read_sav(file.path(input, "602-Modulo1287.sav"))
+
+data <- data  %>%  filter( edad <= 29)  %>% 
+                   dummy_cols(select_columns = c("p116", "p201", "p207", "p301", "p303"), ignore_na = T) %>% 
+                   select(starts_with(c("p116_", "p201_", "p207_", "p301_", "p303_", "p117_", "p204_", "p211_")), -ends_with("esp"))  %>% 
+                   summarise(across(starts_with(c("p116_", "p201_", "p207_","p301_", "p303_", "p117_", "p204_", "p211_")), ~round(mean(.,na.rm = T)*100,1))) %>% 
+                   gather(key, value) %>%  
+                   separate(key, c("variable", "category"), sep = "_")  %>% mutate(category_p117 = case_when(category == 1 & variable == "p117" ~ "Perder el trabajo/oportunidades laborales",
+                                                                                                             category == 2 & variable == "p117" ~ "Perder a la familia",
+                                                                                                             category == 3 & variable == "p117" ~ "No ser aceptado por los amigos",
+                                                                                                             category == 4 & variable == "p117" ~ "Ser discriminado y/o agredido",
+                                                                                                             category == 5 & variable == "p117" ~ "Perder el lugar donde vive",
+                                                                                                             category == 6 & variable == "p117" ~ "No conseguir lugar donde vivir",
+                                                                                                             category == 7 & variable == "p117"~ "Otro",
+                                                                                                             TRUE  ~ "."),
+                                                                                   category_p204 = case_when(category == 1 & variable == "p204" ~ "Le gritaron, amenazaron y/o hostigaron",
+                                                                                                             category == 2 & variable == "p204" ~ "Le obligaron a cambiar la apariencia",
+                                                                                                             category == 3 & variable == "p204" ~ "Le obligaron a someterse a pruebas de ITS/VIH",
+                                                                                                             category == 4 & variable == "p204" ~ "No respetan su género de identificación",
+                                                                                                             category == 5 & variable == "p204" ~ "Ridicularizaron",
+                                                                                                             category == 6 & variable == "p204" ~ "Expulsaron/Negaron la entrada a un espacio público",
+                                                                                                             category == 7 & variable == "p204" ~ "Impidieron donar sangre",
+                                                                                                             category == 8 & variable == "p204" ~ "Negaron/dificultaron a derecho al voto",
+                                                                                                             category == 9 & variable == "p204" ~ "Negaron/dificultaron a registrar su identidad",
+                                                                                                             category == 10 ~ "Víctima de violencia sexual",
+                                                                                                             category == 11 ~ "Asaltaron con algún tipo de arma o droga",
+                                                                                                             category == 12 ~ "Otro",
+                                                                                                             TRUE  ~ "."),
+                                                                                   category_p211 = case_when(category == 1 & variable == "p211" ~ "No sabía a donde ir",
+                                                                                                             category == 2 & variable == "p211" ~ "Pensarían que no era grave o me lo merecía",
+                                                                                                             category == 3 & variable == "p211" ~ "Miedo a las represalias",
+                                                                                                             category == 4 & variable == "p211" ~ "Agresor es un familiar",
+                                                                                                             category == 5 & variable == "p211" ~ "Agresor tiene mayor autoridad ",
+                                                                                                             category == 6 & variable == "p211" ~ "No puede identificar a los agresores",
+                                                                                                             category == 7 & variable == "p211" ~ "Mantener la privacidad",
+                                                                                                             category == 8 & variable == "p211" ~ "Pérdida de tiempo",
+                                                                                                             category == 9 & variable == "p211" ~ "Otro",
+                                                                                                             TRUE  ~ ".")) %>% 
+                                                                            mutate(category_p117 = fct_reorder(category_p117, value),
+                                                                                   category_p204 = fct_reorder(category_p204, value),
+                                                                                   category_p211 = fct_reorder(category_p211, value))
+
+```
+
+# 5. Graphics
+
+## 5.1. Graph 1. Sexual orientation and/or gender identity
+
+```{r,dpi=300}
+identidad <-  ggplot(data %>% filter(variable=="p116"), aes(fill=category, y=value, x=category)) + 
+              geom_bar(position="dodge", stat="identity")+
+              geom_text(aes(label = value), vjust = -1) +
+              scale_fill_manual(values = palette_lgbtq("pansexual"),  guide = "none") +
+              scale_x_discrete(labels= c('Sí', 'No', 'No especifica'))  +
+              ylim(0, 60) +
+              theme_ipsum() +
+              ggtitle("Expresión de su orientación sexual/<br>identidad de género")  +
+              theme(plot.title = element_markdown(hjust = 0.5, size = 16, color = "grey30", family = "Cinzel")) +
+              xlab("") + ylab("")
+identidad
+
+```
+
+
+```{r,dpi=300}
+razon_identidad <-  ggplot(data %>% filter(variable=="p117"), aes(x=category_p117, y=value)) + 
+                    geom_segment(aes(x=category_p117, xend=category_p117, y=0, yend=value), size = 1, color="#FF3399") +
+                    geom_point(color="#F9CF00", size=8) +  
+                    ylim(0, 80) +
+                    geom_text(aes(label = value), hjust = -1) +
+                    theme_ipsum() +
+                    theme(
+                      panel.grid.major.y = element_blank(),  
+                      panel.border = element_blank(), 
+                      axis.ticks.y = element_blank()
+                    )  +
+                    coord_flip()  +   # vertical a horizontal
+                    ggtitle("Motivos para no expresar su orientación sexual/<br>identidad de género*")  +
+                    theme(plot.title = element_markdown(hjust = 0.5,  size = 16, color = "grey30", family = "Cinzel")) +
+                    xlab("") + ylab("") 
+
+razon_identidad
+  
+```
+
+
+```{r,dpi=300}
+identidad + razon_identidad + 
+  plot_annotation(
+    title = 'ORIENTACIÓN SEXUAL Y/O <br>IDENTIDAD DE GÉNERO - POBLACIÓN <b style="color:#FF0000">L</b><b style="color:#FF8000">G</b><b style="color:#FFD218">B</b><b style="color:#00CC66">T</b><b style="color:#33BCFF">I</b>',
+    subtitle = 'El <b>56,5%</b> de la población LGBTI siente <b>temor de expresar su orientación sexual y/o identidad de género</b>, señalando como principal motivo <b>el miedo a ser discriminado y/o agredido (72%),</b><br> 
+    así como el temor a perder a la familia (51,5%), perder el trabajo (44,6) y, a no ser aceptado por los amigos (33%). Un porcentaje de alrededor del 14% expresó su temor a perder el lugar donde<br>
+    vive o, a no conseguir lugar donde vivir.',
+    caption = '<b style="font-size:12pt;color:#FF3399">#DíaDelOrgullo #Pride2023</b><br><br><b>Autor</b>: Braulio Arteaga (@BraulioArt23)  <b> |</b> <b>Fuente</b>: Primera Encuesta Virtual para Personas LGBTI, 2017 - INEI</b><br>
+    <b>Nota</b>: <br>1- La encuesta es de carácter exploratorio mas no representativo,  no obstante, su valor consiste en ser una de las pocas fuentes de información disponible y pública sobre este
+    grupo poblacional hasta la fecha.<br>2-<b></b> Solo se considero a la población de 18 a 29 años, es decir, 8 630 personas.<br>3- Pregunta múltiple <b>( * )</b>.',
+    theme = theme(
+      plot.title = element_markdown(color = "grey10", size = 36, face = "bold",  margin = margin(t = 15), family = "Cinzel"),
+      plot.subtitle = element_markdown(color = "black", size = 12, lineheight = 1.35,
+                                       margin = margin(t = 15, b = 5), family = "Cinzel"),
+      plot.caption = element_markdown(size = 9, hjust = 0, family = "Cinzel",color = "black"),
+      rect = element_rect(fill = "#f7f5ee", color = "transparent")
+    )) +
+  plot_layout(widths = c(1,2))
+
+
+ggsave(filename = "1.Identidad_genero_LGBTI.png", path = output, width = 18, height = 9.5, dpi = 300)
+  
+```
+
+
+## 5.2. Graph 2. Discrimination and/or violence
+
+```{r,dpi=300}
+violencia <-  ggplot(data %>% filter(variable=="p201"), aes(fill=category, y=value, x=category)) + 
+  geom_bar(position="dodge", stat="identity")+
+  geom_text(aes(label = value), vjust = -1) +
+  scale_fill_manual(values = palette_lgbtq("pansexual"),  guide = "none") +
+  scale_x_discrete(labels= c('Sí', 'No', 'No especifica'))  +
+  ylim(0, 70) +
+  theme_ipsum() +
+  ggtitle("Víctima de discriminación / violencia")  +
+  theme(plot.title = element_markdown(hjust = 0.5, size = 16, color = "grey30", family = "Cinzel")) +
+  xlab("") + ylab("")
+
+violencia
+```
+
+```{r,dpi=300}
+tipo_violencia  <-  ggplot(data %>% filter(variable == "p204"), aes(x=category_p204, y=value)) + 
+  geom_segment(aes(x=category_p204, xend=category_p204, y=0, yend=value), size = 1, color="#FF3399") +
+  geom_point(color="#F9CF00", size=4) +  
+  ylim(0, 100) +
+  geom_text(aes(label = value), hjust = -1) +
+  theme_ipsum() +
+  theme(
+    panel.grid.major.y = element_blank(),  
+    panel.border = element_blank(), 
+    axis.ticks.y = element_blank()
+  )  +
+  coord_flip()  +   # vertical a horizontal
+  ggtitle("Tipo de agresiones sufridas*")  +
+  theme(plot.title = element_markdown(hjust = 0.5,  size = 16, color = "grey30", family = "Cinzel")) +
+  xlab("") + ylab("") 
+
+tipo_violencia 
+```
+
+```{r,dpi=300}
+violencia + tipo_violencia +
+    plot_annotation(
+    title = 'DISCRIMINACIÓN Y/O VIOLENCIA - POBLACIÓN <b style="color:#FF0000">L</b><b style="color:#FF8000">G</b><b style="color:#FFD218">B</b><b style="color:#00CC66">T</b><b
+    style="color:#33BCFF">I</b>',
+    subtitle = 'Él <b>63%</b> de participantes indico haber sido víctimas de algún <b>acto de discriminación y/o violencia.   </b>   El <b>85%</b> de víctimas señala que el tipo de agresión y/o acto de
+    violencia que<br>han sufrido, han sido los <b>gritos, amenazas y/o hostigamiento;</b> casi la <b>cuarta parte</b> dijeron que les <b>obligaron a cambiar de apariencia</b> y el 18% revelaron que los 
+    expulsaron o<br>negaron la entrada a un espacio público.',
+    caption = '<b style="font-size:12pt;color:#FF3399">#DíaDelOrgullo #Pride2023</b><br><br><b>Autor</b>: Braulio Arteaga (@BraulioArt23)  <b> |</b> <b>Fuente</b>: Primera Encuesta Virtual para Personas 
+    LGBTI, 2017 - INEI</b><br>
+    <b>Nota</b>: <br>1- La encuesta es de carácter exploratorio mas no representativo,  no obstante, su valor consiste en ser una de las pocas fuentes de información disponible y pública sobre este
+    grupo poblacional hasta la fecha.<br>2-<b></b> Solo se considero a la población de 18 a 29 años, es decir, 8 630 personas.<br>3- Pregunta múltiple <b>( * )</b>.',
+    theme = theme(
+    plot.title = element_markdown(color = "grey10", size = 36, face = "bold",  margin = margin(t = 15), family = "Cinzel"),
+    plot.subtitle = element_markdown(color = "black", size = 12, lineheight = 1.35,
+                                     margin = margin(t = 15, b = 5), family = "Cinzel"),
+    plot.caption = element_markdown(size = 9, hjust = 0, family = "Cinzel",color = "black"),
+    rect = element_rect(fill = "#f7f5ee", color = "transparent")
+    )) +
+    plot_layout(widths = c(1,2))
+
+
+ggsave(filename = "2.Discriminación_LGBTI.png", path = output, width = 18, height = 9.5, dpi = 300)
+```
+
+
+## 5.3. Graph 3. Reporting acts of discrimination or violence
+
+```{r,dpi=300}
+denuncia <-   ggplot(data %>% filter(variable=="p207"), aes(fill=category, y=value, x=category)) + 
+              geom_bar(position="dodge", stat="identity")+
+              geom_text(aes(label = value), vjust = -1) +
+              scale_fill_manual(values = palette_lgbtq("pansexual"),  guide = "none") +
+              scale_x_discrete(labels= c('Sí', 'No', 'No especifica'))  +
+              ylim(0, 100) +
+              theme_ipsum() +
+              ggtitle("Denuncia de la última discriminación/<br>violencia")  +
+              theme(plot.title = element_markdown(hjust = 0.5, size = 16, color = "grey30", family = "Cinzel")) +
+              xlab("") + ylab("")
+
+denuncia
+```
+
+```{r,dpi=300}
+razon_denuncia <-   ggplot(data %>% filter(variable == "p211"), aes(x=category_p211, y=value)) + 
+                    geom_segment(aes(x=category_p211, xend=category_p211, y=0, yend=value), size = 1, color="#FF3399") +
+                    geom_point(color="#F9CF00", size=8) +  
+                    ylim(0, 60) +
+                    geom_text(aes(label = value), hjust = -1) +
+                    theme_ipsum() +
+                    theme(
+                      panel.grid.major.y = element_blank(),  
+                      panel.border = element_blank(), 
+                      axis.ticks.y = element_blank()
+                    )  +
+                    coord_flip()  +   # vertical a horizontal
+                    ggtitle("Razones por las que no realizó la denuncia*")  +
+                    theme(plot.title = element_markdown(hjust = 0.5,  size = 16, color = "grey30", family = "Cinzel")) +
+                    xlab("") + ylab("") 
+
+razon_denuncia
+```
+
+```{r,dpi= 300}
+denuncia + razon_denuncia +
+    plot_annotation(
+    title = 'DENUNCIA DE LOS ACTOS DE VIOLENCIA Y/O<br> DISCRIMINACIÓN - POBLACIÓN <b style="color:#FF0000">L</b><b style="color:#FF8000">G</b><b style="color:#FFD218">B</b><b 
+    style="color:#00CC66">T</b><b
+    style="color:#33BCFF">I</b>',
+    subtitle = 'Solo el <b>4% denunció el último acto de discriminación que sufrió</b>. Las principales razones señaladas por el 96% que no denunciaron fueron: porque consideran que es una <b>pérdida<br> 
+    de tiempo (55%),</b> por temor a que le digan que no era grave o que se lo merecía (41%), o porque no sabía dónde ir (34%) y un porcentaje similar dijo tener miedo a las represalias.',
+    caption = '<b style="font-size:12pt;color:#FF3399">#DíaDelOrgullo #Pride2023</b><br><br><b>Autor</b>: Braulio Arteaga (@BraulioArt23)  <b> |</b> <b>Fuente</b>: Primera Encuesta Virtual para Personas 
+    LGBTI, 2017 - INEI</b><br>
+    <b>Nota</b>: <br>1- La encuesta es de carácter exploratorio mas no representativo,  no obstante, su valor consiste en ser una de las pocas fuentes de información disponible y pública sobre este
+    grupo poblacional hasta la fecha.<br>2-<b></b> Solo se considero a la población de 18 a 29 años, es decir, 8 630 personas.<br>3- Pregunta múltiple <b>( * )</b>.',
+    theme = theme(
+    plot.title = element_markdown(color = "grey10", size = 36, face = "bold",  margin = margin(t = 15), family = "Cinzel"),
+    plot.subtitle = element_markdown(color = "black", size = 12, lineheight = 1.35,
+                                     margin = margin(t = 15, b = 5), family = "Cinzel"),
+    plot.caption = element_markdown(size = 9, hjust = 0, family = "Cinzel",color = "black"),
+    rect = element_rect(fill = "#f7f5ee", color = "transparent")
+    )) +
+    plot_layout(widths = c(1,2))
+
+
+ggsave(filename = "3.Denuncia_LGBTI.png", path = output, width = 18, height = 9.5, dpi = 300)
+```
+
+
+```
